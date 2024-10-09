@@ -9,55 +9,45 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
-@RequiredArgsConstructor
 @Validated
-@RequestMapping("/api/v1/post")
+@RestController
+@RequestMapping("/posts")
+@RequiredArgsConstructor
 public class PostController {
-    private final PostService postService;
 
-    @PostMapping
-    public PostDto create(@RequestBody @Valid PostDto postDto) {
-        return postService.createPost(postDto);
+    private final PostService service;
+
+    @PostMapping("/create")
+    public PostDto create(@Valid @RequestBody PostDto postDto) {
+        return service.createPost(postDto);
     }
 
     @PutMapping("/{id}")
-    public PostDto publish(@PathVariable Long id) {
-        return postService.publishPost(id);
+    public PostDto publish(@PathVariable long id) {
+        return service.publishPost(id);
     }
 
-    @PutMapping("/delete/{id}")
-    public PostDto markDeleted(@PathVariable Long id) {
-        return postService.deletePost(id);
+    @PatchMapping("/{id}")
+    public PostDto update(@PathVariable long id, @RequestBody @Validated PostDto postDto) {
+        return service.updatePost(id, postDto);
     }
 
-    @PutMapping
-    public PostDto update(@RequestBody PostDto postDto) {
-        return postService.updatePost(postDto);
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable long id) {
+        service.deletePost(id);
     }
 
     @GetMapping("/{id}")
-    public PostDto getPost(@PathVariable Long id) {
-        return postService.getPost(id);
+    public PostDto get(@PathVariable long id) {
+        return service.getPost(id);
     }
 
-    @GetMapping("/author_posts/{id}")
-    public List<PostDto> getAllNonPublishedByAuthorId(@PathVariable Long id) {
-        return postService.getAllNonPublishedByAuthorId(id);
-    }
-
-    @GetMapping("/project_posts/{id}")
-    public List<PostDto> getAllNonPublishedByProjectId(@PathVariable Long id) {
-        return postService.getAllNonPublishedByProjectId(id);
-    }
-
-    @GetMapping("/published_by_user/{id}")
-    public List<PostDto> getAllPublishedByAuthorId(@PathVariable Long id) {
-        return postService.getAllPublishedByAuthorId(id);
-    }
-
-    @GetMapping("/published_by_project/{id}")
-    public List<PostDto> getAllPublishedByProjectId(@PathVariable Long id) {
-        return postService.getAllPublishedByProjectId(id);
+    @GetMapping
+    public List<PostDto> getFilteredPosts(
+            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) Boolean published
+    ) {
+        return service.getFilteredPosts(authorId, projectId, published);
     }
 }
