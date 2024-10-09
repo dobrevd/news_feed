@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class FeedCacheService {
     private final PostCacheService postCacheService;
     private final PostCacheMapper postCacheMapper;
 
+    @Async
     public void addPostIdToAuthorFollowers(Long postId, List<Long> followerIds, LocalDateTime publishedAt) {
         followerIds.forEach(followerId -> addPostIdToFollowerFeed(postId, followerId, publishedAt));
     }

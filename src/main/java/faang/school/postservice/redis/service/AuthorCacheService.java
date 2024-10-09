@@ -5,13 +5,13 @@ import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.redis.mapper.AuthorCacheMapper;
 import faang.school.postservice.redis.repository.AuthorCacheRedisRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static java.util.concurrent.CompletableFuture.*;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.runAsync;
 
 @Service
 @RequiredArgsConstructor
