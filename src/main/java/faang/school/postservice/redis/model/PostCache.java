@@ -7,7 +7,7 @@ import lombok.Data;
 import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @RedisHash(value = "posts", timeToLive = 86400)
 @Data
@@ -19,5 +19,5 @@ public class PostCache implements Serializable {
     private Long authorId;
     private Integer likes;
     private Integer views;
-    private final CopyOnWriteArraySet<CommentDto> comments;
+    private final CopyOnWriteArrayList<CommentDto> comments;
 }
