@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.StreamSupport;
 
 @Service
@@ -71,30 +72,10 @@ public class PostCacheService {
         }
     }
 
-    private void incrementConcurrentPostViews(Long postId) {
-        redisTemplate.opsForHash()
-                .increment(generateCachePostKey(postId), postCacheViewsField, 1);
-    }
-
-    private PostCache createAndCachePost(Long postId) {
-        var postDto = postService.getPost(postId);
-        return savePostCache(postDto);
-    }
-
     public void addComment(PostCache postCache, CommentDto commentDto) {
-        var comments = postCache.getComments();
-        ensureCapacity(comments);
-        comments.add(0, commentDto);
-    }
-
-    private void ensureCapacity(List<CommentDto> comments) {
-        if (comments.size() == maxCommentsQuantity) {
-            comments.remove(comments.size() - 1);
-        }
-    }
-
-    private String generateCachePostKey(Long postId) {
-        return postCacheKeyPrefix + postId;
+        CopyOnWriteArrayList<CommentDto> comments = postCache.getComments();
+        removeOldestIfFull(comments);
+        addCommentIfNotPresent(comments, commentDto);
     }
 
     public List<PostCache> getPostCacheByIds(List<Long> postIds) {
@@ -106,5 +87,31 @@ public class PostCacheService {
     public PostCache savePostCache(PostDto postDto) {
         var postCache = postCacheMapper.toPostCache(postDto);
         return postCacheRepository.save(postCache);
+    }
+
+    private String generateCachePostKey(Long postId) {
+        return postCacheKeyPrefix + postId;
+    }
+
+    private void incrementConcurrentPostViews(Long postId) {
+        redisTemplate.opsForHash()
+                .increment(generateCachePostKey(postId), postCacheViewsField, 1);
+    }
+
+    private PostCache createAndCachePost(Long postId) {
+        var postDto = postService.getPost(postId);
+        return savePostCache(postDto);
+    }
+
+    private void removeOldestIfFull(CopyOnWriteArrayList<CommentDto> comments) {
+        if (comments.size() == maxCommentsQuantity) {
+            comments.remove(comments.size() - 1);
+        }
+    }
+
+    private void addCommentIfNotPresent(CopyOnWriteArrayList<CommentDto> comments, CommentDto commentDto){
+        if (!comments.contains(commentDto)){
+            comments.add(0, commentDto);
+        }
     }
 }

@@ -11,7 +11,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.util.List;
 
 import static org.mockito.Mockito.anyLong;
@@ -38,9 +37,9 @@ class ScheduledExpiredAdRemoverTest {
     @BeforeEach
     public void init() {
         ad1.setAppearancesLeft(1L);
-        ad1.setEndDate(LocalDateTime.of(2024, Month.OCTOBER, 11, 12, 12));
+        ad1.setEndDate(LocalDateTime.now().plusMonths(1));
         ad2.setAppearancesLeft(0L);
-        ad2.setEndDate(LocalDateTime.of(2024, Month.OCTOBER, 11, 12, 12));
+        ad2.setEndDate(LocalDateTime.now().plusMonths(2));
         ad3.setAppearancesLeft(1L);
         ad3.setEndDate(LocalDateTime.now().minusDays(1L));
         ad4.setAppearancesLeft(0L);

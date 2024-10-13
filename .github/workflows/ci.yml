@@ -3,7 +3,7 @@ name: CI Pipeline
 on:
   pull_request:
     branches:
-      - 'cyclop-master-bc5'
+      - 'dev'
 
 jobs:
   test:
