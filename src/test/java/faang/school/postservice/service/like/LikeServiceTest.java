@@ -1,4 +1,4 @@
-package faang.school.postservice.like;
+package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.comment.CommentDto;
@@ -6,6 +6,7 @@ import faang.school.postservice.dto.like.LikeDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.event.LikeEvent;
+import faang.school.postservice.kafka.EventsGenerator;
 import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.mapper.LikeMapper;
 import faang.school.postservice.mapper.PostMapper;
@@ -15,7 +16,6 @@ import faang.school.postservice.model.Post;
 import faang.school.postservice.publisher.LikeEventPublisher;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
-import faang.school.postservice.service.like.LikeServiceImpl;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.validator.LikeValidator;
 import jakarta.persistence.EntityNotFoundException;
@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,7 +64,9 @@ class LikeServiceImplTest {
     @Mock
     private CommentMapper commentMapper;
     @Mock
-    UserServiceClient userServiceClient;
+    private UserServiceClient userServiceClient;
+    @Mock
+    private EventsGenerator eventsGenerator;
 
     @InjectMocks
     private LikeServiceImpl likeService;
@@ -118,6 +121,8 @@ class LikeServiceImplTest {
         when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
         when(likeRepository.save(like)).thenReturn(like);
         when(likeMapper.toDto(any(Like.class))).thenReturn(likeDto);
+        when(postMapper.toDto(post)).thenReturn(postDto);
+        doNothing().when(eventsGenerator).generateAndSendLikeEvent(any(PostDto.class));
 
         LikeDto result = likeService.addPostLike(likeDto);
 

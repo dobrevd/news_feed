@@ -1,11 +1,16 @@
-package faang.school.postservice.post;
+package faang.school.postservice.service.post;
 
 import faang.school.postservice.dto.post.PostDto;
+import faang.school.postservice.kafka.EventsGenerator;
+import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.mapper.PostMapper;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.redis.service.AuthorCacheService;
+import faang.school.postservice.redis.service.PostCacheService;
 import faang.school.postservice.repository.PostRepository;
-import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.util.TestDataFactory;
 import faang.school.postservice.validator.PostServiceValidator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,23 +20,27 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static faang.school.postservice.post.PostMock.content;
-import static faang.school.postservice.post.PostMock.authorId;
-import static faang.school.postservice.post.PostMock.generatePost;
-import static faang.school.postservice.post.PostMock.generatePostDto;
-import static faang.school.postservice.post.PostMock.generateFilteredPosts;
-import static faang.school.postservice.post.PostMock.newContent;
-import static faang.school.postservice.post.PostMock.postId;
-import static faang.school.postservice.post.PostMock.projectId;
+import static faang.school.postservice.controller.post.PostMock.authorId;
+import static faang.school.postservice.controller.post.PostMock.content;
+import static faang.school.postservice.controller.post.PostMock.generateFilteredPosts;
+import static faang.school.postservice.controller.post.PostMock.generatePost;
+import static faang.school.postservice.controller.post.PostMock.generatePostDto;
+import static faang.school.postservice.controller.post.PostMock.newContent;
+import static faang.school.postservice.controller.post.PostMock.postId;
+import static faang.school.postservice.controller.post.PostMock.projectId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,10 +54,22 @@ public class PostServiceTest {
     private PostServiceValidator<PostDto> validator;
     @Spy
     private PostMapper postMapper = Mappers.getMapper(PostMapper.class);
-
     @InjectMocks
     private PostService service;
+    @Mock
+    private CommentMapper commentMapper;
+    @Mock
+    private AuthorCacheService authorCacheService;
+    @Mock
+    private PostCacheService postCacheService;
+    @Mock
+    private EventsGenerator eventsGenerator;
 
+    @BeforeEach
+    public void setUp() {
+        // Injecting the CommentMapper mock into the PostMapper
+        ReflectionTestUtils.setField(postMapper, "commentMapper", commentMapper);
+    }
 
     @Test
     @DisplayName("Create post with author id")
@@ -57,6 +78,7 @@ public class PostServiceTest {
         PostDto expectedPostDto = generatePostDto(authorId, null, false, content);
         Post post = postMapper.toEntity(expectedPostDto);
 
+        when(postMapper.toDto(any(Post.class))).thenReturn(expectedPostDto);
         when(postRepository.save(post)).thenReturn(post);
 
         // Act
@@ -77,7 +99,9 @@ public class PostServiceTest {
         PostDto expectedPostDto = generatePostDto(null, projectId, false, content);
         Post post = postMapper.toEntity(expectedPostDto);
 
+        when(postMapper.toEntity(any(PostDto.class))).thenReturn(post);
         when(postRepository.save(post)).thenReturn(post);
+        when(postMapper.toDto(any(Post.class))).thenReturn(expectedPostDto);
 
         // Act
         PostDto actual = service.createPost(expectedPostDto);
@@ -95,9 +119,13 @@ public class PostServiceTest {
     public void testPublishPost() {
         // Arrange
         Post post = generatePost(authorId, null, false, content);
+        var postCache = TestDataFactory.createPostCache();
 
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(postRepository.save(post)).thenReturn(post);
+        doNothing().when(authorCacheService).saveAuthorCache(anyLong());
+        when(postCacheService.savePostCache(any(PostDto.class))).thenReturn(postCache);
+        doNothing().when(eventsGenerator).generateAndSendPostFollowersEvent(any(PostDto.class));
 
         // Act
         PostDto actual = service.publishPost(postId);
