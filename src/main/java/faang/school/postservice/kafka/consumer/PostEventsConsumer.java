@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 public class PostEventsConsumer {
     private final FeedCacheService feedCacheService;
 
-    @KafkaListener(topics = "${spring.kafka.topic-name.posts:posts}")
+    @KafkaListener(topics = "${spring.kafka.topic-name.posts:posts}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(PostFollowersEvent event, Acknowledgment acknowledgment){
         try {
             feedCacheService.distributePostToFollowers(event.postId(), event.followersIds(), event.publishedAt());

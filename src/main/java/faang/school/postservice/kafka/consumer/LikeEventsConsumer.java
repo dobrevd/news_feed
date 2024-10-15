@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 public class LikeEventsConsumer {
     private final PostCacheService postCacheService;
 
-    @KafkaListener(topics = "${spring.kafka.topic-name.likes:likes}")
+    @KafkaListener(topics = "${spring.kafka.topic-name.likes:likes}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(PostLikeEvent event, Acknowledgment acknowledgment){
         try {
             postCacheService.incrementConcurrentPostLikes(event.id());

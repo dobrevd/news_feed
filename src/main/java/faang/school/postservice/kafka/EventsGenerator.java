@@ -17,7 +17,7 @@ public class EventsGenerator {
     private final KafkaEventProducer kafkaEventProducer;
     private final UserServiceClient userServiceClient;
 
-    public void generateAndSendPostFollowersEvent(PostDto postDto){
+    public void savePostCacheAndSendPostFollowersEvent(PostDto postDto){
         var author = userServiceClient.getUser(postDto.getAuthorId());
         var event = PostFollowersEvent.builder()
                 .authorId(postDto.getAuthorId())

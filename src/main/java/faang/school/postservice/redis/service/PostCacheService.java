@@ -5,7 +5,7 @@ import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.redis.mapper.PostCacheMapper;
 import faang.school.postservice.redis.model.PostCache;
 import faang.school.postservice.redis.repository.PostCacheRepository;
-import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.service.post.PostRetrievalService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,36 +19,34 @@ import java.util.stream.StreamSupport;
 @Service
 @Slf4j
 public class PostCacheService {
-    @Value("{spring.data.redis.post-cache.views}")
+    @Value("${spring.data.redis.post-cache.views}")
     private String postCacheViewsField;
-    @Value("{spring.data.redis.post-cache.likes}")
+    @Value("${spring.data.redis.post-cache.likes}")
     private String postCacheLikesField;
-    @Value("{spring.data.redis.post-cache.comments-in-post:3}")
-    private int commentsInPostQuantity;
-    @Value("{spring.data.redis.post-cache.key-prefix}")
+    @Value("${spring.data.redis.post-cache.key-prefix}")
     private String postCacheKeyPrefix;
-    @Value("spring.data.redis.post-cache.comments-in-post:3")
-    private int maxCommentsQuantity;
+    @Value("${spring.data.redis.post-cache.comments-per-post:3}")
+    private int commentLimitPerPost;
 
     @Qualifier("redisCacheTemplate")
     private final RedisTemplate<String, Object> redisTemplate;
     private final PostCacheRepository postCacheRepository;
     private final PostCacheMapper postCacheMapper;
-    private final PostService postService;
+    private final PostRetrievalService postRetrievalService;
 
     public PostCacheService(RedisTemplate<String, Object> redisTemplate, PostCacheRepository postCacheRepository,
-                            PostCacheMapper postCacheMapper, PostService postService) {
+                            PostCacheMapper postCacheMapper, PostRetrievalService postRetrievalService) {
         this.redisTemplate = redisTemplate;
         this.postCacheRepository = postCacheRepository;
         this.postCacheMapper = postCacheMapper;
-        this.postService = postService;
+        this.postRetrievalService = postRetrievalService;
     }
 
     public void addPostView(Long postId){
         if (postCacheRepository.existsById(postId)) {
             incrementConcurrentPostViews(postId);
         }else {
-            var postDto = postService.getPost(postId);
+            var postDto = postRetrievalService.getPostById(postId);
             savePostCache(postDto);
         }
     }
@@ -58,7 +56,7 @@ public class PostCacheService {
             redisTemplate.opsForHash()
                     .increment(generateCachePostKey(postId), postCacheLikesField, 1);
         } else {
-            var postDto = postService.getPost(postId);
+            var postDto = postRetrievalService.getPostById(postId);
             savePostCache(postDto);
         }
     }
@@ -99,12 +97,12 @@ public class PostCacheService {
     }
 
     private PostCache createAndCachePost(Long postId) {
-        var postDto = postService.getPost(postId);
+        var postDto = postRetrievalService.getPostById(postId);
         return savePostCache(postDto);
     }
 
     private void removeOldestIfFull(CopyOnWriteArrayList<CommentDto> comments) {
-        if (comments.size() == maxCommentsQuantity) {
+        if (comments.size() == commentLimitPerPost) {
             comments.remove(comments.size() - 1);
         }
     }

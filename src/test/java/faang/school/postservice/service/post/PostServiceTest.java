@@ -125,7 +125,7 @@ public class PostServiceTest {
         when(postRepository.save(post)).thenReturn(post);
         doNothing().when(authorCacheService).saveAuthorCache(anyLong());
         when(postCacheService.savePostCache(any(PostDto.class))).thenReturn(postCache);
-        doNothing().when(eventsGenerator).generateAndSendPostFollowersEvent(any(PostDto.class));
+        doNothing().when(eventsGenerator).savePostCacheAndSendPostFollowersEvent(any(PostDto.class));
 
         // Act
         PostDto actual = service.publishPost(postId);

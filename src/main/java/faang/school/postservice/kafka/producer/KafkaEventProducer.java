@@ -16,16 +16,18 @@ import org.springframework.stereotype.Service;
 public class KafkaEventProducer {
     @Value("${spring.kafka.topic-name.posts:posts}")
     private String postTopic;
-    @Value("${spring.kafka.topic-name.post-views-topic}")
+    @Value("${spring.kafka.topic-name.post-views:post_views}")
     private String postViewsTopic;
     @Value("${spring.kafka.topic-name.comments:comments}")
     private String commentTopic;
     @Value("${spring.kafka.topic-name.posts:likes}")
     private String likeTopic;
-    @Value("${spring.kafka.topic-name.heat}")
-    private String heatTopic;
+    @Value("${spring.kafka.topic-name.heat-posts:heat_posts}")
+    private String heatPostsTopic;
+    @Value("${spring.kafka.topic-name.heat-feed:heat_feed}")
+    private String heatFeedTopic;
 
-    private final KafkaTemplate<Long, Object> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void sendPostFollowersEvent(PostFollowersEvent event) {
         kafkaTemplate.send(postTopic, event);
@@ -44,14 +46,14 @@ public class KafkaEventProducer {
     }
 
     public void sendFeedHeatEvent(FeedDto event) {
-         kafkaTemplate.send(heatTopic, event)
+         kafkaTemplate.send(heatFeedTopic, event)
                 .thenRun(() -> {})
                 .exceptionally(ex -> {
                     throw new RuntimeException("Failed to send feed heat event", ex);
                 });
     }
     public void sendPostHeatEvent(PostDto event) {
-        kafkaTemplate.send(heatTopic, event)
+        kafkaTemplate.send(heatPostsTopic, event)
                 .thenRun(() -> {})
                 .exceptionally(ex -> {
                     throw new RuntimeException("Failed to send feed heat event", ex);
