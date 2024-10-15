@@ -13,20 +13,19 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 
 import static java.util.Collections.emptyList;
-import static java.util.Optional.*;
+import static java.util.Optional.ofNullable;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FeedCacheService {
-    @Value("{spring.data.redis.feed-cache.size:500}")
+    @Value("${spring.data.redis.feed-cache.size:500}")
     private int maxFeedSize;
-    @Value("{spring.data.redis.feed-cache.key-prefix}")
+    @Value("${spring.data.redis.feed-cache.key-prefix}")
     private String feedPrefix;
-    @Value("{spring.data.redis.feed-cache.batch_size:20}")
+    @Value("${spring.data.redis.feed-cache.batch_size:20}")
     private int postsPerPage;
 
     private final RedisTemplate<String, Object> redisTemplate;

@@ -15,7 +15,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class FeedHeatService {
-    @Value("spring.data.redis.heat.max-posts-in-feed:500")
+    @Value("${spring.data.redis.heat.max-posts-in-feed:500}")
     private int maxPostsInHeatFeed;
 
     private final KafkaEventProducer kafkaEventProducer;

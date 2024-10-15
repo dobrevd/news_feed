@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Configuration
 public class KafkaTopicConfig {
-    @Value("${spring.kafka.bootstrap_servers}")
+    @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
     @Value("${spring.kafka.topic-name.likes:likes}")
     private String likesTopic;

@@ -11,9 +11,10 @@ import faang.school.postservice.validator.PostServiceValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import static java.time.LocalDateTime.now;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +23,10 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostServiceValidator<PostDto> validator;
 
-    private final PostCacheService postCacheService;
     private final EventsGenerator eventsGenerator;
     private final AuthorCacheService authorCacheService;
+
+    private final PostCacheService postCacheService;
 
     public PostDto createPost(final PostDto postDto) {
         validator.validate(postDto);
@@ -35,32 +37,29 @@ public class PostService {
     }
 
     public PostDto publishPost(final long postId) {
-        Post post = getPostByIdOrFail(postId);
-
+        var post = getPostByIdOrFail(postId);
         validatePostPublishing(post);
 
-        LocalDateTime now = LocalDateTime.now();
         post.setPublished(true);
-        post.setPublishedAt(now);
-        post.setUpdatedAt(now);
+        post.setPublishedAt(now());
+        post.setUpdatedAt(now());
 
         var savedPost = postRepository.save(post);
         var postDto = postMapper.toDto(savedPost);
 
         authorCacheService.saveAuthorCache(postDto.getAuthorId());
         postCacheService.savePostCache(postDto);
-        eventsGenerator.generateAndSendPostFollowersEvent(postDto);
+        eventsGenerator.savePostCacheAndSendPostFollowersEvent(postDto);
 
         return postDto;
     }
-
 
     public PostDto updatePost(final long postId, final PostDto postDto) {
         Post newPost = postMapper.toEntity(postDto);
         Post post = getPostByIdOrFail(postId);
 
         post.setContent(newPost.getContent());
-        post.setUpdatedAt(LocalDateTime.now());
+        post.setUpdatedAt(now());
 
         return postMapper.toDto(postRepository.save(post));
     }
@@ -70,7 +69,7 @@ public class PostService {
         Post post = getPostByIdOrFail(postId);
 
         post.setDeleted(true);
-        post.setUpdatedAt(LocalDateTime.now());
+        post.setUpdatedAt(now());
 
         postRepository.save(post);
     }

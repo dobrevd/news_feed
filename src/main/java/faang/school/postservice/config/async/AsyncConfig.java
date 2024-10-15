@@ -11,13 +11,13 @@ import java.util.concurrent.Executor;
 @Configuration
 @EnableAsync
 public class AsyncConfig {
-    @Value("${app.async.hash_generator.core_pool_size}")
+    @Value("${spring.app.async.hash_generator.core_pool_size}")
     private int corePoolSize;
-    @Value("${app.async.hash_generator.max_pool_size}")
+    @Value("${spring.app.async.hash_generator.max_pool_size}")
     private int maxPoolSize;
-    @Value("${app.async.hash_generator.queue_capacity}")
+    @Value("${spring.app.async.hash_generator.queue_capacity}")
     private int queueCapacity;
-    @Value("${app.async.hash_generator.thread_name_prefix}")
+    @Value("${spring.app.async.hash_generator.thread_name_prefix}")
     private String threadNamePrefix;
 
     @Bean

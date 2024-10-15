@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 public class CommentEventsConsumer {
     private final PostCacheService postCacheService;
 
-    @KafkaListener(topics = "${spring.kafka.topic-name.comments:comments}")
+    @KafkaListener(topics = "${spring.kafka.topic-name.comments:comments}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(CommentEvent event, Acknowledgment acknowledgment){
         try {
             postCacheService.addCommentToCachedPost(event.postId(), event.commentDto());

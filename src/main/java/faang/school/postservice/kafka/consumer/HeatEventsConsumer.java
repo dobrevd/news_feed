@@ -14,12 +14,14 @@ public class HeatEventsConsumer {
     private final PostCacheService postCacheService;
     private final FeedCacheService feedCacheService;
 
-    @KafkaListener(topics = "${spring.kafka.topic-name.heat-posts:heat_posts}")
+    @KafkaListener(topics = "${spring.kafka.topic-name.heat-posts:heat_posts}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(PostDto event){
         postCacheService.savePostCache(event);
     }
 
-    @KafkaListener(topics = "${spring.kafka.topic-name.heat-feed:heat_feed}")
+    @KafkaListener(topics = "${spring.kafka.topic-name.heat-feed:heat_feed}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(FeedDto event){
         feedCacheService.saveUserFeedHeat(event);
     }

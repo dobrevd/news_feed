@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
 public class PostViewEventsConsumer {
     private final PostCacheService postCacheService;
 
-    @KafkaListener(topics = "${spring.kafka.topic-name. post-views:post_views}")
+    @KafkaListener(topics = "${spring.kafka.topic-name. post-views:post_views}",
+            groupId = "${spring.kafka.consumer.group-id}")
     void listener(PostViewEvent event){
         postCacheService.addPostView(event.postId());
     }
