@@ -30,7 +30,6 @@ public class FeedHeatService {
         var feedEvents = generateFeedsForAllUserFollowers(allUsers);
         sendFeedHeatEvents(feedEvents);
 
-
         var postEvents = generatePostEvents(feedEvents);
         sendPostHeatEvents(postEvents);
     }
@@ -43,8 +42,8 @@ public class FeedHeatService {
        feedEvents.forEach(kafkaEventProducer::sendFeedHeatEvent);
     }
 
-    private List<FeedDto> generateFeedsForAllUserFollowers(List<UserDto> allUsersInOurSystem) {
-        return allUsersInOurSystem.parallelStream()
+    private List<FeedDto> generateFeedsForAllUserFollowers(List<UserDto> allExistingUsers) {
+        return allExistingUsers.parallelStream()
                 .map(follower -> {
                     var followerId = follower.getId();
                     var bloggers = userServiceClient.getUsersByIds(follower.getFollowees());
