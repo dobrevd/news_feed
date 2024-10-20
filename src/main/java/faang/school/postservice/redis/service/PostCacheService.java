@@ -42,9 +42,10 @@ public class PostCacheService {
         this.postRetrievalService = postRetrievalService;
     }
 
-    public void addPostView(Long postId){
+    public void incrementConcurrentPostViews(Long postId){
         if (postCacheRepository.existsById(postId)) {
-            incrementConcurrentPostViews(postId);
+            redisTemplate.opsForHash()
+                    .increment(generateCachePostKey(postId), postCacheViewsField, 1);
         }else {
             var postDto = postRetrievalService.getPostById(postId);
             savePostCache(postDto);
@@ -66,14 +67,8 @@ public class PostCacheService {
                 .orElseGet(() -> createAndCachePost(postId));
 
         if (postCache != null) {
-            addComment(postCache, commentDto);
+            verifyAndAddComment(postCache, commentDto);
         }
-    }
-
-    public void addComment(PostCache postCache, CommentDto commentDto) {
-        CopyOnWriteArrayList<CommentDto> comments = postCache.getComments();
-        removeOldestIfFull(comments);
-        addCommentIfNotPresent(comments, commentDto);
     }
 
     public List<PostCache> getPostCacheByIds(List<Long> postIds) {
@@ -91,14 +86,15 @@ public class PostCacheService {
         return postCacheKeyPrefix + postId;
     }
 
-    private void incrementConcurrentPostViews(Long postId) {
-        redisTemplate.opsForHash()
-                .increment(generateCachePostKey(postId), postCacheViewsField, 1);
-    }
-
     private PostCache createAndCachePost(Long postId) {
         var postDto = postRetrievalService.getPostById(postId);
         return savePostCache(postDto);
+    }
+
+    private void verifyAndAddComment(PostCache postCache, CommentDto commentDto) {
+        CopyOnWriteArrayList<CommentDto> comments = postCache.getComments();
+        removeOldestIfFull(comments);
+        addCommentIfNotPresent(comments, commentDto);
     }
 
     private void removeOldestIfFull(CopyOnWriteArrayList<CommentDto> comments) {

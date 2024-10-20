@@ -14,6 +14,6 @@ public class PostViewEventsConsumer {
     @KafkaListener(topics = "${spring.kafka.topic-name. post-views:post_views}",
             groupId = "${spring.kafka.consumer.group-id}")
     void listener(PostViewEvent event){
-        postCacheService.addPostView(event.postId());
+        postCacheService.incrementConcurrentPostViews(event.postId());
     }
 }

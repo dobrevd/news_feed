@@ -25,6 +25,11 @@ public final class TestDataFactory {
 
     public static final Long INVALID_ID = MAX_VALUE;
 
+    public final static String POST_CACHE_VIEWS_FIELD = "view";
+    public final static String POST_CACHE_LIKES_FIELD = "likes";
+    public final static String POST_CACHE_KEY_PREFIX = "post:";
+    public final static int COMMENT_LIMIT_PER_POST = 3;
+
 
     public static final Long FOLLOWER_ID = 111L;
     public static final List<Long> FOLLOWER_IDS = of(2L, 3L, 4L);
