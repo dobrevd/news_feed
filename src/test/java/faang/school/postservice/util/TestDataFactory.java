@@ -25,15 +25,21 @@ public final class TestDataFactory {
 
     public static final Long INVALID_ID = MAX_VALUE;
 
+    public final static String POST_CACHE_VIEWS_FIELD = "view";
+    public final static String POST_CACHE_LIKES_FIELD = "likes";
+    public final static String POST_CACHE_KEY_PREFIX = "post:";
+    public final static int COMMENT_LIMIT_PER_POST = 3;
+
 
     public static final Long FOLLOWER_ID = 111L;
-    public static final List<Long> FOLLOWER_IDS = List.of(2L, 3L, 4L);
+    public static final List<Long> FOLLOWER_IDS = of(2L, 3L, 4L);
     public static final Set<Object> FOLLOWER_POST_IDS = Set.of(22L, 33L, 44L);
 
     public static final int MAX_FEED_SIZE = 500;
     public static final String FEED_PREFIX = "feed:";
     public static final int POSTS_PER_PAGE = 20;
     public static final Long MOCK_FEED_SIZE = 500L;
+    public final static int MAX_POSTS_IN_HEAT_FEED = 500;
 
     public static final LocalDateTime PUBLISHED_AT = LocalDateTime.now().minusMonths(3);
     public static final double EXPECTED_SCORE = (double) PUBLISHED_AT.toInstant(ZoneOffset.UTC).toEpochMilli();
@@ -106,6 +112,8 @@ public final class TestDataFactory {
                 .id(12345L)
                 .username("testUserName")
                 .email("test@email.com")
+                .followees(of(888L))
+                .posts(of(ID))
                 .build();
     }
 
@@ -115,6 +123,6 @@ public final class TestDataFactory {
 
     public static FeedDto creatFeedDto(){
         var postDto = createPostDto();
-        return new FeedDto(111L, List.of(postDto));
+        return new FeedDto(111L, of(postDto));
     }
 }
