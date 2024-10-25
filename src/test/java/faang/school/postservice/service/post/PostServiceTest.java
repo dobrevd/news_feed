@@ -50,8 +50,6 @@ public class PostServiceTest {
 
     @Mock
     private PostRepository postRepository;
-    @Mock
-    private PostServiceValidator<PostDto> validator;
     @Spy
     private PostMapper postMapper = Mappers.getMapper(PostMapper.class);
     @InjectMocks
@@ -125,7 +123,7 @@ public class PostServiceTest {
         when(postRepository.save(post)).thenReturn(post);
         doNothing().when(authorCacheService).saveAuthorCache(anyLong());
         when(postCacheService.savePostCache(any(PostDto.class))).thenReturn(postCache);
-        doNothing().when(eventsGenerator).savePostCacheAndSendPostFollowersEvent(any(PostDto.class));
+        doNothing().when(eventsGenerator).generateAndSendPostFollowersEvent(any(PostDto.class));
 
         // Act
         PostDto actual = service.publishPost(postId);
