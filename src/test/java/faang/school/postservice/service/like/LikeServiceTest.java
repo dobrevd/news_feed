@@ -147,7 +147,7 @@ class LikeServiceImplTest {
 
     @Test
     void addCommentLike() {
-        when(commentService.getComment(anyLong())).thenReturn(commentDto);
+        when(commentService.findCommentById(anyLong())).thenReturn(commentDto);
         when(commentMapper.toEntity(commentDto)).thenReturn(comment);
         when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
         when(likeRepository.save(any(Like.class))).thenReturn(like);
@@ -165,7 +165,7 @@ class LikeServiceImplTest {
 
     @Test
     void deleteCommentLike() {
-        when(commentService.getComment(anyLong())).thenReturn(commentDto);
+        when(commentService.findCommentById(anyLong())).thenReturn(commentDto);
         when(commentMapper.toEntity(commentDto)).thenReturn(comment);
         when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
 

@@ -55,7 +55,7 @@ public class LikeServiceImpl implements LikeService {
         Long userId = likeDto.getUserId();
         Long commentId = likeDto.getCommentId();
         Like like = likeMapper.toEntity(likeDto);
-        Comment comment = commentMapper.toEntity(commentService.getComment(commentId));
+        Comment comment = commentMapper.toEntity(commentService.findCommentById(commentId));
         comment.getLikes().remove(like);
         likeRepository.deleteByCommentIdAndUserId(commentId, userId);
     }
@@ -66,7 +66,7 @@ public class LikeServiceImpl implements LikeService {
         Long userId = likeDto.getUserId();
         Long commentId = likeDto.getCommentId();
         likeValidator.validateUserExistence(userId);
-        Comment comment = commentMapper.toEntity(commentService.getComment(commentId));
+        Comment comment = commentMapper.toEntity(commentService.findCommentById(commentId));
         likeValidator.validateLikeToComment(comment, userId);
         Like like = likeMapper.toEntity(likeDto);
         comment.getLikes().add(like);

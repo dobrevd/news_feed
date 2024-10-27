@@ -20,25 +20,25 @@ public class CommentController {
     public CommentDto addComment(@RequestParam Long postId, @Valid @RequestBody CommentDto commentDto) {
         validatePostId(postId);
         validateCommentDto(commentDto);
-        return service.addComment(postId, commentDto);
+        return service.addCommentToPost(postId, commentDto);
     }
 
     @PutMapping("/comment")
     public CommentDto updateComment(@RequestParam Long postId, @Valid @RequestBody CommentDto commentDto) {
         validatePostId(postId);
         validateCommentDto(commentDto);
-        return service.updateComment(postId, commentDto);
+        return service.updateCommentOnPost(postId, commentDto);
     }
 
     @PostMapping("/comments")
     public List<CommentDto> getComments(@RequestParam Long postId) {
         System.out.println(postId);
         validatePostId(postId);
-        return service.getComments(postId);
+        return service.findCommentsByPostId(postId);
     }
     @GetMapping("/comment")
     public CommentDto get(@RequestParam Long id) {
-        return service.getComment(id);
+        return service.findCommentById(id);
     }
 
     @DeleteMapping("/comment")

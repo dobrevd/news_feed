@@ -42,7 +42,7 @@ public class EventsGenerator {
         kafkaEventProducer.sendLikeEvent(event);
     }
 
-    public void generateAndSendCommentEventToKafka(CommentDto commentDto){
+    public void generateAndSendCommentEvent(CommentDto commentDto){
         var event = CommentEvent.builder()
                 .commentDto(commentDto)
                 .content(commentDto.getContent())

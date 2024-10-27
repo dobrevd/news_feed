@@ -9,12 +9,14 @@ import faang.school.postservice.redis.service.AuthorCacheService;
 import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.service.comment.error.CommentServiceErrors;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+
+import static java.time.LocalDateTime.*;
 
 @Service
 @RequiredArgsConstructor
@@ -25,94 +27,82 @@ public class CommentService {
     private final EventsGenerator eventsGenerator;
     private final AuthorCacheService authorCacheService;
 
-    public CommentDto addComment(Long postId, CommentDto commentDto) {
-        if (commentDto.getContent() == null || commentDto.getContent().isBlank()) {
-            throw new IllegalArgumentException(CommentServiceErrors.COMMENT_IS_EMPTY.getValue());
-        }
-        if (commentDto.getContent().length() > 4096) {
-            throw new IllegalArgumentException(CommentServiceErrors.COMMENT_TOO_LONG.getValue());
-        }
+    @Transactional
+    public CommentDto addCommentToPost(Long postId, CommentDto commentDto) {
+        var post = validatePostExists(postId);
 
-        Comment comment = mapper.toEntity(commentDto);
-        Post post = getPost(postId);
-        comment.setPost(post);
-        Comment saveComment = repository.save(comment);
-        post.getComments().add(saveComment);
-        post.setUpdatedAt(LocalDateTime.now());
-        postRepository.save(post);
-        var savedCommentDto = mapper.toDto(saveComment);
+        var savedComment = createAndSaveComment(post, commentDto);
+        updatePostWithComment(post, savedComment);
 
-        eventsGenerator.generateAndSendCommentEventToKafka(savedCommentDto);
+        var savedCommentDto = mapper.toDto(savedComment);
+
+        eventsGenerator.generateAndSendCommentEvent(savedCommentDto);
         authorCacheService.saveAuthorCache(savedCommentDto.getAuthorId());
 
         return savedCommentDto;
-
     }
 
-    public CommentDto updateComment(Long postId, CommentDto commentDto) {
-        getPost(postId);
-        Comment comment = repository.findById(commentDto.getId()).orElse(null);
-        if (comment == null) {
+    public CommentDto updateCommentOnPost(Long postId, CommentDto commentDto) {
+        validatePostExists(postId);
+        if (!repository.existsById(commentDto.getId())){
             throw new IllegalArgumentException(CommentServiceErrors.COMMENT_NOT_FOUND.getValue());
         }
-        CommentDto currentCommentDto = mapper.toDto(comment);
-        equalUpdateComment(commentDto, currentCommentDto);
-        commentDto.setUpdatedAt(LocalDateTime.now());
-        Comment newComment = mapper.toEntity(commentDto);
-        return mapper.toDto(repository.save(newComment));
 
+        var savedComment = saveComment(commentDto);
+        return mapper.toDto(savedComment);
     }
 
-    public List<CommentDto> getComments(Long postId) {
-        getPost(postId);
-        List<Comment> comments = repository.findAllByPostId(postId);
-        List<CommentDto> commentDtos = mapper.toDto(comments);
-        return commentDtos.stream()
+    public List<CommentDto> findCommentsByPostId(Long postId) {
+        validatePostExists(postId);
+
+        return repository.findAllByPostId(postId)
+                .stream()
+                .map(mapper::toDto)
                 .sorted(this::localDateComparator)
                 .toList();
     }
 
-    public CommentDto getComment(Long commentId) {
-        Comment comment = getCommentByIdOrFail(commentId);
+    public CommentDto findCommentById(Long commentId) {
+        var comment = findExistingComment(commentId);
         return mapper.toDto(comment);
     }
 
     public CommentDto deleteComment(Long postId, CommentDto commentDto) {
-        getPost(postId);
+        validatePostExists(postId);
         repository.deleteById(commentDto.getId());
         return commentDto;
     }
 
-    private Comment getCommentByIdOrFail(Long commentId) {
-        return repository.findById(commentId).orElseThrow(() -> new IllegalArgumentException("Comment not found"));
+    private Post validatePostExists(Long postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException(CommentServiceErrors.POST_NOT_FOUND.getValue()));
     }
 
-    private Post getPost(Long postId) {
-        Post post = postRepository.findById(postId).orElse(null);
-        if (post == null) {
-            throw new IllegalArgumentException(CommentServiceErrors.POST_NOT_FOUND.getValue());
-        }
-        return post;
+    private Comment createAndSaveComment(Post post, CommentDto commentDto){
+        var comment = mapper.toEntity(commentDto);
+        comment.setPost(post);
+        return repository.save(comment);
     }
 
-    private void equalUpdateComment(CommentDto commentDto, CommentDto currentCommentDto) {
-        if (!Objects.equals(commentDto.getAuthorId(), currentCommentDto.getAuthorId())
-                || !Objects.equals(commentDto.getLikes(), currentCommentDto.getLikes())
-                || !Objects.equals(commentDto.getPostId(), currentCommentDto.getPostId())
-                || !Objects.equals(commentDto.getCreatedAt(), currentCommentDto.getCreatedAt())
-                || !Objects.equals(commentDto.getUpdatedAt(), currentCommentDto.getUpdatedAt())
-        ) {
-            throw new IllegalArgumentException(CommentServiceErrors.CHANGE_NOT_COMMENT.getValue());
-        }
+    private void updatePostWithComment(Post post, Comment comment){
+        post.getComments().add(comment);
+        post.setUpdatedAt(now());
+        postRepository.save(post);
+    }
+
+    private Comment findExistingComment(Long commentId) {
+        return repository.findById(commentId).
+                orElseThrow(() -> new IllegalArgumentException("Comment not found"));
+    }
+
+    private Comment saveComment(CommentDto commentDto){
+        commentDto.setUpdatedAt(now());
+        var comment = mapper.toEntity(commentDto);
+        return repository.save(comment);
     }
 
     private int localDateComparator(CommentDto commentLeft, CommentDto commentRight) {
-        if (commentLeft.getCreatedAt().isAfter(commentRight.getCreatedAt())) {
-            return 1;
-        } else if (commentLeft.getCreatedAt().isBefore(commentRight.getCreatedAt())) {
-            return -1;
-        } else {
-            return 0;
-        }
+        return Comparator.comparing(CommentDto::getCreatedAt)
+                .compare(commentLeft, commentRight);
     }
 }
