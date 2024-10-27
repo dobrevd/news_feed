@@ -7,49 +7,40 @@ import faang.school.postservice.model.Post;
 import faang.school.postservice.redis.service.AuthorCacheService;
 import faang.school.postservice.redis.service.PostCacheService;
 import faang.school.postservice.repository.PostRepository;
-import faang.school.postservice.validator.PostServiceValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static java.time.LocalDateTime.now;
+import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.concurrent.CompletableFuture.runAsync;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 @Service
 @RequiredArgsConstructor
 public class PostService {
     private final PostMapper postMapper;
     private final PostRepository postRepository;
-    private final PostServiceValidator<PostDto> validator;
-
     private final EventsGenerator eventsGenerator;
     private final AuthorCacheService authorCacheService;
-
     private final PostCacheService postCacheService;
 
-    public PostDto createPost(final PostDto postDto) {
-        validator.validate(postDto);
+    public PostDto createPost(PostDto postDto) {
+        var post = postMapper.toEntity(postDto);
+        var savedPost = postRepository.save(post);
 
-        Post post = postMapper.toEntity(postDto);
-
-        return postMapper.toDto(postRepository.save(post));
+        return postMapper.toDto(savedPost);
     }
 
-    public PostDto publishPost(final long postId) {
+    public PostDto publishPost(Long postId) {
         var post = getPostByIdOrFail(postId);
-        validatePostPublishing(post);
+        postPublishingValidation(post);
 
-        post.setPublished(true);
-        post.setPublishedAt(now());
-        post.setUpdatedAt(now());
-
-        var savedPost = postRepository.save(post);
-        var postDto = postMapper.toDto(savedPost);
-
-        authorCacheService.saveAuthorCache(postDto.getAuthorId());
-        postCacheService.savePostCache(postDto);
-        eventsGenerator.savePostCacheAndSendPostFollowersEvent(postDto);
+        var postDto = updateAndSavePost(post);
+        cachePostAndNotifyFollowersAsync(postDto);
 
         return postDto;
     }
@@ -66,7 +57,7 @@ public class PostService {
 
 
     public void deletePost(final long postId) {
-        Post post = getPostByIdOrFail(postId);
+        var post = getPostByIdOrFail(postId);
 
         post.setDeleted(true);
         post.setUpdatedAt(now());
@@ -75,7 +66,7 @@ public class PostService {
     }
 
     public PostDto getPost(final long postId) {
-        Post post = getPostByIdOrFail(postId);
+        var post = getPostByIdOrFail(postId);
         var postDto = postMapper.toDto(post);
 
         eventsGenerator.generateAndSendPostViewEvent(postDto);
@@ -88,28 +79,56 @@ public class PostService {
                 .toList();
     }
 
-    public List<PostDto> getFilteredPosts(final Long authorId, final Long projectId, final Boolean isPostPublished) {
-        List<Post> result = new ArrayList<>();
-        boolean isPublished = isPostPublished;
-
+    public List<PostDto> getFilteredPosts(Long authorId, Long projectId, Boolean isPostPublished) {
         if (authorId != null) {
-            result = postRepository.findByAuthorIdAndPublishedAndDeletedIsFalseOrderByPublished(authorId, isPublished);
-        } else if (projectId != null) {
-            result = postRepository.findByProjectIdAndPublishedAndDeletedIsFalseOrderByPublished(projectId, isPublished);
+            return findByAuthor(authorId, isPostPublished);
         }
-
-        return result.stream()
-                .map((postMapper::toDto))
-                .toList();
+        if (projectId != null) {
+            return findByProject(projectId, isPostPublished);
+        }
+        return Collections.emptyList();
     }
 
-    private void validatePostPublishing(Post post) {
+    private Post getPostByIdOrFail(long postId) {
+        return postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+    }
+
+    private void postPublishingValidation(Post post) {
         if (post.isPublished()) {
             throw new IllegalArgumentException("Post is already published");
         }
     }
 
-    private Post getPostByIdOrFail(long postId) {
-        return postRepository.findById(postId).orElseThrow(() -> new IllegalArgumentException("Post not found"));
+    private PostDto updateAndSavePost(Post post){
+        var now = now();
+        post.setPublished(true);
+        post.setPublishedAt(now);
+        post.setUpdatedAt(now);
+
+        var savedPost = postRepository.save(post);
+        return postMapper.toDto(savedPost);
+    }
+
+    private CompletableFuture<Void> cachePostAndNotifyFollowersAsync(PostDto postDto){
+        var cacheAuthorFuture = runAsync(() -> authorCacheService.saveAuthorCache(postDto.getAuthorId()));
+        var cachePostFuture = supplyAsync(() -> postCacheService.savePostCache(postDto));
+        var triggerEventFuture = runAsync(() -> eventsGenerator.generateAndSendPostFollowersEvent(postDto));
+
+        return allOf(cacheAuthorFuture, cachePostFuture, triggerEventFuture);
+    }
+
+    private List<PostDto> findByAuthor(Long authorId, Boolean isPostPublished) {
+        return postRepository.findByAuthorIdAndPublishedAndDeletedIsFalseOrderByPublished(authorId, isPostPublished)
+                .stream()
+                .map(postMapper::toDto)
+                .toList();
+    }
+
+    private List<PostDto> findByProject(Long projectId, Boolean isPostPublished) {
+        return postRepository.findByProjectIdAndPublishedAndDeletedIsFalseOrderByPublished(projectId, isPostPublished)
+                .stream()
+                .map(postMapper::toDto)
+                .toList();
     }
 }

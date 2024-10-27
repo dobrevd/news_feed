@@ -60,7 +60,7 @@ public class CommentControllerTest {
                 CommentDto.builder().content("Дизлайк").build()
         );
         long postId = 1L;
-        when(service.getComments(any())).thenReturn(expectedComments);
+        when(service.findCommentsByPostId(any())).thenReturn(expectedComments);
 
         // Act and Assert
         mockMvc.perform(post("/api/comments?postId=" + postId))
@@ -79,7 +79,7 @@ public class CommentControllerTest {
                 .authorId(1L)
                 .postId(postId)
                 .build();
-        when(service.addComment(any(), any())).thenReturn(expectedCommentDto);
+        when(service.addCommentToPost(any(), any())).thenReturn(expectedCommentDto);
 
         // Act and Assert
         mockMvc.perform(post("/api/comment?postId=" + postId)
@@ -102,7 +102,7 @@ public class CommentControllerTest {
                 .postId(postId)
                 .content(newContent)
                 .build();
-        when(service.updateComment(any(), any())).thenReturn(expectedCommentDto);
+        when(service.updateCommentOnPost(any(), any())).thenReturn(expectedCommentDto);
 
         // Act and Assert
         mockMvc.perform(put("/api/comment?postId=" + postId)

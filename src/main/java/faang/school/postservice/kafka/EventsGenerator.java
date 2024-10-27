@@ -17,10 +17,9 @@ public class EventsGenerator {
     private final KafkaEventProducer kafkaEventProducer;
     private final UserServiceClient userServiceClient;
 
-    public void savePostCacheAndSendPostFollowersEvent(PostDto postDto){
+    public void generateAndSendPostFollowersEvent(PostDto postDto){
         var author = userServiceClient.getUser(postDto.getAuthorId());
         var event = PostFollowersEvent.builder()
-                .authorId(postDto.getAuthorId())
                 .followersIds(author.getFollowers())
                 .publishedAt(postDto.getPublishedAt())
                 .build();
@@ -43,7 +42,7 @@ public class EventsGenerator {
         kafkaEventProducer.sendLikeEvent(event);
     }
 
-    public void generateAndSendCommentEventToKafka(CommentDto commentDto){
+    public void generateAndSendCommentEvent(CommentDto commentDto){
         var event = CommentEvent.builder()
                 .commentDto(commentDto)
                 .content(commentDto.getContent())
