@@ -14,6 +14,7 @@ import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.publisher.LikeEventPublisher;
+import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
@@ -28,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static faang.school.postservice.util.TestDataFactory.ID;
 import static faang.school.postservice.util.TestDataFactory.INVALID_ID;
@@ -46,7 +48,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LikeServiceImplTest {
-
     @Mock
     private LikeValidator likeValidator;
     @Mock
@@ -60,13 +61,13 @@ class LikeServiceImplTest {
     @Mock
     private CommentService commentService;
     @Mock
-    private PostMapper postMapper;
-    @Mock
     private CommentMapper commentMapper;
     @Mock
     private UserServiceClient userServiceClient;
     @Mock
     private EventsGenerator eventsGenerator;
+    @Mock
+    private CommentRepository commentRepository;
 
     @InjectMocks
     private LikeServiceImpl likeService;
@@ -117,17 +118,15 @@ class LikeServiceImplTest {
     @Test
     void addPostLike() {
         when(postService.getPost(anyLong())).thenReturn(postDto);
-        when(postMapper.toEntity(postDto)).thenReturn(post);
         when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
         when(likeRepository.save(like)).thenReturn(like);
         when(likeMapper.toDto(any(Like.class))).thenReturn(likeDto);
-        when(postMapper.toDto(post)).thenReturn(postDto);
         doNothing().when(eventsGenerator).generateAndSendLikeEvent(any(PostDto.class));
 
-        LikeDto result = likeService.addPostLike(likeDto);
+        LikeDto result = likeService.addLikeToPost(likeDto);
 
         verify(likeValidator).validateUserExistence(likeDto.getUserId());
-        verify(likeValidator).validateLikeToPost(post, likeDto.getUserId());
+        verify(likeValidator).validateLikeToPost(postDto, likeDto.getUserId());
         verify(likeRepository).save(like);
         verify(likePublisher).publish(any(LikeEvent.class));
 
@@ -136,11 +135,9 @@ class LikeServiceImplTest {
 
     @Test
     void deletePostLike() {
-        when(postService.getPost(anyLong())).thenReturn(postDto);
-        when(postMapper.toEntity(postDto)).thenReturn(post);
-        when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
+        when(likeRepository.findByPostIdAndUserId(anyLong(), anyLong())).thenReturn(Optional.of(like));
 
-        likeService.deletePostLike(likeDto);
+        likeService.deleteLikeFromPost(likeDto);
 
         verify(likeRepository).deleteByPostIdAndUserId(likeDto.getPostId(), likeDto.getUserId());
     }
@@ -148,15 +145,16 @@ class LikeServiceImplTest {
     @Test
     void addCommentLike() {
         when(commentService.findCommentById(anyLong())).thenReturn(commentDto);
-        when(commentMapper.toEntity(commentDto)).thenReturn(comment);
         when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
         when(likeRepository.save(any(Like.class))).thenReturn(like);
         when(likeMapper.toDto(any(Like.class))).thenReturn(likeDto);
+        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
+        when(commentMapper.toEntity(commentDto)).thenReturn(comment);
 
-        LikeDto result = likeService.addCommentLike(likeDto);
+        LikeDto result = likeService.addLikeToComment(likeDto);
 
         verify(likeValidator).validateUserExistence(likeDto.getUserId());
-        verify(likeValidator).validateLikeToComment(comment, likeDto.getUserId());
+        verify(likeValidator).validateLikeForComment(comment, likeDto.getUserId());
         verify(likeRepository).save(like);
         verify(likePublisher).publish(any(LikeEvent.class));
 
@@ -165,16 +163,12 @@ class LikeServiceImplTest {
 
     @Test
     void deleteCommentLike() {
-        when(commentService.findCommentById(anyLong())).thenReturn(commentDto);
-        when(commentMapper.toEntity(commentDto)).thenReturn(comment);
-        when(likeMapper.toEntity(any(LikeDto.class))).thenReturn(like);
+        doNothing().when(likeRepository).deleteByCommentIdAndUserId(anyLong(), anyLong());
 
         likeService.deleteCommentLike(likeDto);
 
         verify(likeRepository).deleteByCommentIdAndUserId(likeDto.getCommentId(), likeDto.getUserId());
     }
-
-
 
     @Test
     void givenPostIdWhenFindUsersByPostIdThenReturnUsers() {

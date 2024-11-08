@@ -8,13 +8,13 @@ import java.util.List;
 
 @Service
 public interface LikeService {
-    LikeDto addCommentLike(LikeDto likeDto);
+    LikeDto addLikeToComment(LikeDto likeDto);
 
     void deleteCommentLike(LikeDto likeDto);
 
-    LikeDto addPostLike(LikeDto likeDto);
+    LikeDto addLikeToPost(LikeDto likeDto);
 
-    void deletePostLike(LikeDto likeDto);
+    void deleteLikeFromPost(LikeDto likeDto);
     List<UserDto> findUsersByPostId(Long postId);
     List<UserDto> findUsersByCommentId(Long commentId);
 }

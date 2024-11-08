@@ -17,7 +17,7 @@ public class LikeController {
 
     @PostMapping("/comment")
     public LikeDto addCommentLike(@RequestBody @Valid LikeDto likeDto) {
-        return likeService.addCommentLike(likeDto);
+        return likeService.addLikeToComment(likeDto);
     }
 
     @DeleteMapping("user/{userId}/comment/{commentId}")
@@ -27,12 +27,12 @@ public class LikeController {
 
     @PostMapping("/post")
     public LikeDto addPostLike(@RequestBody @Valid LikeDto likeDto) {
-        return likeService.addPostLike(likeDto);
+        return likeService.addLikeToPost(likeDto);
     }
 
     @DeleteMapping("user/{userId}/post/{postId}")
     public void deletePostLike(@RequestBody @Valid LikeDto likeDto) {
-        likeService.deletePostLike(likeDto);
+        likeService.deleteLikeFromPost(likeDto);
     }
 
     @GetMapping("/post/{postId}")
