@@ -3,6 +3,7 @@ package faang.school.postservice.service.post;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.kafka.EventsGenerator;
 import faang.school.postservice.mapper.PostMapper;
+import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.redis.service.AuthorCacheService;
 import faang.school.postservice.redis.service.PostCacheService;
@@ -87,6 +88,18 @@ public class PostService {
             return findByProject(projectId, isPostPublished);
         }
         return Collections.emptyList();
+    }
+
+    public void addLikeByPostId(Long postId, Like like){
+        var post = getPostByIdOrFail(postId);
+        post.getLikes().add(like);
+        postRepository.save(post);
+    }
+
+    public void removeLikeByPostId(Long postId, Like like) {
+        var post = getPostByIdOrFail(postId);
+        post.getLikes().remove(like);
+        postRepository.save(post);
     }
 
     private Post getPostByIdOrFail(long postId) {

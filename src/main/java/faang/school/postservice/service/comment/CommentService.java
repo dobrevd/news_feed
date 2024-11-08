@@ -13,10 +13,10 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
 
-import static java.time.LocalDateTime.*;
+import static java.time.LocalDateTime.now;
+import static java.util.Comparator.comparing;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +30,6 @@ public class CommentService {
     @Transactional
     public CommentDto addCommentToPost(Long postId, CommentDto commentDto) {
         var post = validatePostExists(postId);
-
         var savedComment = createAndSaveComment(post, commentDto);
         updatePostWithComment(post, savedComment);
 
@@ -54,11 +53,10 @@ public class CommentService {
 
     public List<CommentDto> findCommentsByPostId(Long postId) {
         validatePostExists(postId);
-
         return repository.findAllByPostId(postId)
                 .stream()
                 .map(mapper::toDto)
-                .sorted(this::localDateComparator)
+                .sorted(comparing(CommentDto::getCreatedAt))
                 .toList();
     }
 
@@ -99,10 +97,5 @@ public class CommentService {
         commentDto.setUpdatedAt(now());
         var comment = mapper.toEntity(commentDto);
         return repository.save(comment);
-    }
-
-    private int localDateComparator(CommentDto commentLeft, CommentDto commentRight) {
-        return Comparator.comparing(CommentDto::getCreatedAt)
-                .compare(commentLeft, commentRight);
     }
 }

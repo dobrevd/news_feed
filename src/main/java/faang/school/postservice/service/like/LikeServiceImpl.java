@@ -2,16 +2,16 @@ package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.like.LikeDto;
+import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.event.LikeEvent;
 import faang.school.postservice.kafka.EventsGenerator;
 import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.mapper.LikeMapper;
-import faang.school.postservice.mapper.PostMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
-import faang.school.postservice.model.Post;
 import faang.school.postservice.publisher.LikeEventPublisher;
+import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import static java.lang.Math.min;
 
@@ -43,85 +44,69 @@ public class LikeServiceImpl implements LikeService {
     private final LikeEventPublisher likePublisher;
     private final PostService postService;
     private final CommentService commentService;
-    private final PostMapper postMapper;
     private final CommentMapper commentMapper;
     private final UserServiceClient userServiceClient;
-
+    private final CommentRepository commentRepository;
     private final EventsGenerator eventsGenerator;
 
     @Override
-    @Transactional
     public void deleteCommentLike(LikeDto likeDto) {
-        Long userId = likeDto.getUserId();
-        Long commentId = likeDto.getCommentId();
-        Like like = likeMapper.toEntity(likeDto);
-        Comment comment = commentMapper.toEntity(commentService.findCommentById(commentId));
-        comment.getLikes().remove(like);
-        likeRepository.deleteByCommentIdAndUserId(commentId, userId);
+        likeRepository.deleteByCommentIdAndUserId(likeDto.getCommentId(), likeDto.getUserId());
     }
 
     @Override
     @Transactional
-    public LikeDto addCommentLike(LikeDto likeDto) {
+    public LikeDto addLikeToComment(LikeDto likeDto) {
         Long userId = likeDto.getUserId();
         Long commentId = likeDto.getCommentId();
+
         likeValidator.validateUserExistence(userId);
-        Comment comment = commentMapper.toEntity(commentService.findCommentById(commentId));
-        likeValidator.validateLikeToComment(comment, userId);
-        Like like = likeMapper.toEntity(likeDto);
-        comment.getLikes().add(like);
-        like = likeRepository.save(like);
+        var comment = retrieveComment(commentId);
+        likeValidator.validateLikeForComment(comment, userId);
+
+        var like = addLikeToCommentEntity(likeDto, comment);
+
         publisher(userId, null, commentId, comment.getAuthorId());
         log.info("Like with likeId = {} added on comment with commentId = {} by user with userId = {}",
                 like.getId(),
                 commentId,
                 userId);
+
         return likeMapper.toDto(like);
     }
 
     @Override
     @Transactional
-    public LikeDto addPostLike(LikeDto likeDto) {
-        Long userId = likeDto.getUserId();
-        Long postId = likeDto.getPostId();
-        likeValidator.validateUserExistence(userId);
-        Post post = postMapper.toEntity(postService.getPost(postId));
-        likeValidator.validateLikeToPost(post, userId);
-        Like like = likeMapper.toEntity(likeDto);
-        post.getLikes().add(like);
-        like = likeRepository.save(like);
-        publisher(userId, postId, null, post.getAuthorId());
-        log.info("Like with likeId = {} added on post with postId = {} by user with userId = {}",
+    public LikeDto addLikeToPost(LikeDto likeDto) {
+        var userId = likeDto.getUserId();
+        var postId = likeDto.getPostId();
+        var postDto = postService.getPost(postId);
+
+        validateLikeRequest(likeDto, postDto);
+
+        var like = createLike(likeDto);
+        postService.addLikeByPostId(postId, like);
+
+        publisher(userId, postId, null, postDto.getAuthorId());
+        log.info("Like with likeId = {} added on postDto with postId = {} by user with userId = {}",
                 like.getId(),
                 postId,
                 userId);
 
-        eventsGenerator.generateAndSendLikeEvent(postMapper.toDto(post));
-
+        eventsGenerator.generateAndSendLikeEvent(postDto);
         return likeMapper.toDto(like);
     }
 
     @Override
     @Transactional
-    public void deletePostLike(LikeDto likeDto) {
-        Long userId = likeDto.getUserId();
-        Long postId = likeDto.getPostId();
-        Like like = likeMapper.toEntity(likeDto);
-        Post post = postMapper.toEntity(postService.getPost(postId));
-        post.getLikes().remove(like);
-        likeRepository.deleteByPostIdAndUserId(postId, userId);
-    }
+    public void deleteLikeFromPost(LikeDto likeDto) {
+        var userId = likeDto.getUserId();
+        var postId = likeDto.getPostId();
+        var like = likeRepository.findByPostIdAndUserId(postId, userId)
+                .orElseThrow(() -> new NoSuchElementException("Like with postId: " + postId + " is not found."));
 
-    private void publisher(Long userId, Long postId, Long commentId, Long authorId) {
-        LikeEvent event = LikeEvent.builder()
-                .authorLikeId(userId)
-                .commentId(commentId)
-                .postId(postId)
-                .authorCommentId(commentId != null ? authorId : null)
-                .authorPostId(commentId != null ? authorId : null)
-                .completedAt(LocalDateTime.now())
-                .build();
-        likePublisher.publish(event);
+        postService.removeLikeByPostId(postId, like);
+        likeRepository.deleteByPostIdAndUserId(postId, userId);
     }
 
     public List<UserDto> findUsersByPostId(Long postId) {
@@ -142,6 +127,18 @@ public class LikeServiceImpl implements LikeService {
         return getUsersInBatches(userIds);
     }
 
+    private void publisher(Long userId, Long postId, Long commentId, Long authorId) {
+        LikeEvent event = LikeEvent.builder()
+                .authorLikeId(userId)
+                .commentId(commentId)
+                .postId(postId)
+                .authorCommentId(commentId != null ? authorId : null)
+                .authorPostId(commentId != null ? authorId : null)
+                .completedAt(LocalDateTime.now())
+                .build();
+        likePublisher.publish(event);
+    }
+
     private List<UserDto> getUsersInBatches(List<Long> userIds) {
         List<UserDto> allUsers = new ArrayList<>();
 
@@ -158,5 +155,27 @@ public class LikeServiceImpl implements LikeService {
         if (userIds.isEmpty()) {
             throw new EntityNotFoundException("No users found for ID " + id);
         }
+    }
+
+    private void validateLikeRequest(LikeDto likeDto, PostDto postDto) {
+        likeValidator.validateUserExistence(likeDto.getUserId());
+        likeValidator.validateLikeToPost(postDto, likeDto.getUserId());
+    }
+
+    private Like createLike(LikeDto likeDto) {
+        var like = likeMapper.toEntity(likeDto);
+        return likeRepository.save(like);
+    }
+
+    private Comment retrieveComment(Long commentId){
+        var commentDto = commentService.findCommentById(commentId);
+        return commentMapper.toEntity(commentDto);
+    }
+
+    private Like addLikeToCommentEntity(LikeDto likeDto, Comment comment){
+        var like = likeMapper.toEntity(likeDto);
+        comment.getLikes().add(like);
+        commentRepository.save(comment);
+        return likeRepository.save(like);
     }
 }
